@@ -26,3 +26,12 @@ def func_c_5(lst: list) -> list:
 
 def func_c_6(lst: list, value: int) -> bool:
     return value in lst
+
+
+class ClassC:
+    def method_c_1(self, x: int) -> int:
+        lst = [i ** 2 for i in range(x)]
+        return func_c_1(lst)
+
+    def method_c_2(self, x: int, y: int) -> int:
+        return x + y
