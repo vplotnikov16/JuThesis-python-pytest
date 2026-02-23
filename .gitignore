@@ -1,3 +1,20 @@
 .idea/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# JuThesis artifacts
+juthesis_input.json
+juthesis_output.json
+.test_durations.json
+
+# Sample project
 /sample_project/.coverage
 /sample_project/.test_durations.json
