@@ -15,7 +15,7 @@ def scan_functions(scanner: FunctionScanner) -> dict[Path, list[FunctionInfo]]:
     return scanner.build_index()
 
 
-def analyze_changes(scanner: FunctionScanner) -> list[Path]:
+def analyze_changes(scanner: FunctionScanner) -> set[str]:
     print("Analyzing changes...")
 
     sample_root = get_project_root() / "sample_project"
@@ -23,17 +23,16 @@ def analyze_changes(scanner: FunctionScanner) -> list[Path]:
     # Создаем анализатор изменений
     analyzer = GitAnalyzer(root=sample_root, function_scanner=scanner)
 
-    # Получаем измененные файлы в HEAD коммите
+    # Определяем измененные функции в HEAD коммите
     try:
-        modified_files = analyzer.get_modified_files(base_ref="HEAD~1", target_ref="HEAD")
-        print(f"Found {len(modified_files)} modified Python files:")
-        for file in modified_files:
-            rel_path = file.relative_to(sample_root)
-            print(f"  - {rel_path}")
-        return modified_files
+        modified_functions = analyzer.get_modified_functions(
+            base_ref="HEAD~1", target_ref="HEAD"
+        )
+        return modified_functions
+        
     except RuntimeError as e:
         print(f"Warning: {e}")
-        return []
+        return set()
 
 
 def main():
@@ -52,17 +51,16 @@ def main():
     print(f"Found {total_functions} functions in {len(function_index)} files")
 
     # Анализ изменений
-    modified_files = analyze_changes(scanner)
-    print("Modified files:")
-    print(*map(lambda x: f' - {x}', modified_files), sep="\n")
+    modified_functions = analyze_changes(scanner)
+    print("Modified functions:")
+    print(*map(lambda x: f' - {x}', modified_functions), sep="\n")
 
-    # TODO: определение изменённых функций
     # TODO: сбор покрытия
     # TODO: сбор времени выполнения
     # TODO: построение протокола
     # TODO: сохранение input.json
 
-    print("\nPipeline completed.")
+    print("Pipeline completed.")
 
 
 if __name__ == "__main__":

@@ -3,15 +3,27 @@ import subprocess
 from pathlib import Path
 from typing import Set, List
 
-from .scanner import FunctionScanner
+from JuThesis_pytest.scanner import FunctionScanner
 
 
 class GitAnalyzer:
-
     def __init__(self, root: Path, function_scanner: FunctionScanner):
         self.root = root
         self.function_scanner = function_scanner
+        self.git_root = self._get_git_root()
         self._verify_git_repo()
+
+    def _get_git_root(self) -> Path:
+        # Получение корня git-репозитория
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=self.root,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode == 0:
+            return Path(result.stdout.strip())
+        return self.root
 
     def _verify_git_repo(self) -> None:
         # Проверка, что директория является git репозиторием
@@ -50,9 +62,17 @@ class GitAnalyzer:
         files = []
         for line in result.stdout.strip().split("\n"):
             if line and line.endswith(".py"):
-                file_path = self.root / line
-                if file_path.exists():
-                    files.append(file_path)
+                # Git возвращает путь относительно git root
+                file_path = (self.git_root / line).resolve()
+
+                # Проверяем что файл внутри self.root (нашего скоупа анализа)
+                try:
+                    file_path.relative_to(self.root.resolve())
+                    if file_path.exists():
+                        files.append(file_path)
+                except ValueError:
+                    # Файл вне нашего скоупа анализа, пропускаем
+                    continue
 
         return files
 
@@ -62,7 +82,12 @@ class GitAnalyzer:
             base_ref: str = "HEAD",
             target_ref: str | None = None
     ) -> Set[int]:
-        relative_path = file_path.relative_to(self.root)
+        # Путь относительно git root для команды git diff
+        try:
+            relative_path = file_path.relative_to(self.git_root)
+        except ValueError:
+            # Файл вне git репозитория
+            return set()
 
         # Формирование команды для получения diff с контекстом 0
         if target_ref:
@@ -73,7 +98,7 @@ class GitAnalyzer:
         try:
             result = subprocess.run(
                 cmd,
-                cwd=self.root,
+                cwd=self.git_root,
                 capture_output=True,
                 text=True,
                 check=True
