@@ -1,4 +1,4 @@
-"""Анализ изменений через git."""
+import re
 import subprocess
 from pathlib import Path
 from typing import Set, List
@@ -7,35 +7,52 @@ from .scanner import FunctionScanner
 
 
 class GitAnalyzer:
-    """ Анализатор изменений через git """
 
     def __init__(self, root: Path, function_scanner: FunctionScanner):
         self.root = root
         self.function_scanner = function_scanner
+        self._verify_git_repo()
+
+    def _verify_git_repo(self) -> None:
+        # Проверка, что директория является git репозиторием
+        result = subprocess.run(
+            ["git", "rev-parse", "--git-dir"],
+            cwd=self.root,
+            capture_output=True,
+            text=True
+        )
+        if result.returncode != 0:
+            raise ValueError(f"{self.root} is not a git repository")
 
     def get_modified_files(
             self,
             base_ref: str = "HEAD",
             target_ref: str | None = None
     ) -> List[Path]:
-        """ Получить список измененных файлов """
+        # Формирование команды для получения измененных файлов
         if target_ref:
             cmd = ["git", "diff", "--name-only", base_ref, target_ref]
         else:
             cmd = ["git", "diff", "--name-only", base_ref]
 
-        result = subprocess.run(
-            cmd,
-            cwd=self.root,
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            # Обработка ошибок выполнения git команды
+            raise RuntimeError(f"Git command failed: {e.stderr}") from e
 
         files = []
         for line in result.stdout.strip().split("\n"):
-            if line.endswith(".py"):
-                files.append(self.root / line)
+            if line and line.endswith(".py"):
+                file_path = self.root / line
+                if file_path.exists():
+                    files.append(file_path)
 
         return files
 
@@ -45,38 +62,40 @@ class GitAnalyzer:
             base_ref: str = "HEAD",
             target_ref: str | None = None
     ) -> Set[int]:
-        """ Геттер номеров измененных строк в файле."""
         relative_path = file_path.relative_to(self.root)
 
+        # Формирование команды для получения diff с контекстом 0
         if target_ref:
             cmd = ["git", "diff", "-U0", base_ref, target_ref, "--", str(relative_path)]
         else:
             cmd = ["git", "diff", "-U0", base_ref, "--", str(relative_path)]
 
-        result = subprocess.run(
-            cmd,
-            cwd=self.root,
-            capture_output=True,
-            text=True,
-            check=True
-        )
+        try:
+            result = subprocess.run(
+                cmd,
+                cwd=self.root,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+        except subprocess.CalledProcessError:
+            return set()
 
+        return self._parse_diff_lines(result.stdout)
+
+    @staticmethod
+    def _parse_diff_lines(diff_output: str) -> Set[int]:
+        # Парсинг вывода git diff для извлечения номеров измененных строк
+        # Формат: @@ -old_start,old_count +new_start,new_count @@
         modified_lines = set()
-        for line in result.stdout.split("\n"):
-            if line.startswith("@@"):
-                # Парсинг формата @@ -l,s +l,s @@
-                parts = line.split()
-                if len(parts) >= 3:
-                    new_range = parts[2]  # +l,s
-                    if new_range.startswith("+"):
-                        range_str = new_range[1:]
-                        if "," in range_str:
-                            start, count = range_str.split(",")
-                            start = int(start)
-                            count = int(count)
-                            modified_lines.update(range(start, start + count))
-                        else:
-                            modified_lines.add(int(range_str))
+        pattern = re.compile(r'@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@')
+
+        for match in pattern.finditer(diff_output):
+            start = int(match.group(1))
+            count = int(match.group(2)) if match.group(2) else 1
+
+            # Добавляем диапазон изменённых строк
+            modified_lines.update(range(start, start + count))
 
         return modified_lines
 
@@ -85,21 +104,28 @@ class GitAnalyzer:
             base_ref: str = "HEAD",
             target_ref: str | None = None
     ) -> Set[str]:
-        """ Геттер идентификаторов измененных функций """
+        # Получение списка измененных файлов
         modified_files = self.get_modified_files(base_ref, target_ref)
-        function_index = self.function_scanner.build_index()
+        if not modified_files:
+            return set()
 
+        # Построение индекса всех функций в проекте
+        function_index = self.function_scanner.build_index()
         modified_functions = set()
 
         for file_path in modified_files:
             if file_path not in function_index:
                 continue
 
+            # Получение измененных строк в файле
             modified_lines = self.get_modified_lines(file_path, base_ref, target_ref)
+            if not modified_lines:
+                continue
+
             functions = function_index[file_path]
 
+            # Проверка пересечения строк функций с изменёнными строками
             for func in functions:
-                # Если хотя бы одна строка функции изменена
                 func_lines = set(range(func.start_line, func.end_line + 1))
                 if func_lines & modified_lines:
                     modified_functions.add(func.identifier)
