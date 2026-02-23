@@ -6,21 +6,24 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Хранение времени выполнения тестов
 _durations = {}
 
 
 @pytest.hookimpl(tryfirst=True)
 def pytest_runtest_makereport(item, call):
+    # Сбор времени выполнения теста
     if call.when == "call":
         test_id = item.nodeid
-        duration = call.duration
-        _durations[test_id] = duration
+        _durations[test_id] = call.duration
 
 
 def pytest_sessionfinish(session, exitstatus):
-    output_file = Path.cwd() / ".test_durations.json"
-    output_file.write_text(
+    # Сохранение времени выполнения после завершения тестов
+    output_dir = Path.cwd()
+    
+    durations_file = output_dir / ".test_durations.json"
+    durations_file.write_text(
         json.dumps(_durations, indent=2),
         encoding="utf-8"
     )
-    print(f"\nTest durations saved to: {output_file}")

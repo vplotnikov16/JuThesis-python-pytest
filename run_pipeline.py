@@ -56,6 +56,10 @@ def main():
     print(*map(lambda x: f' - {x}', modified_functions), sep="\n")
 
     # TODO: сбор покрытия
+    # Для тестирования необходимо запустить:
+    # cd sample_project && pytest --cov=src --cov-context=test
+    # Это создаст .coverage файл с контекстами
+
     # TODO: сбор времени выполнения
     # TODO: построение протокола
     # TODO: сохранение input.json
