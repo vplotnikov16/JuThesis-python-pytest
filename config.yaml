@@ -27,3 +27,7 @@ juthesis:
 output:
   directory: .
   input_file: juthesis_input.json
+
+cache:
+  enabled: true
+  directory: .juthesis_cache

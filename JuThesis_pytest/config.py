@@ -33,6 +33,10 @@ class PluginConfig:
     # Выходные файлы
     output_dir: Path
     input_json_name: str
+    
+    # Параметры кэширования
+    cache_enabled: bool
+    cache_directory: Path
 
     @property
     def coverage_file_path(self) -> Path:
@@ -53,6 +57,11 @@ class PluginConfig:
     def input_json_path(self) -> Path:
         """ Полный путь к input.json """
         return self.output_path / self.input_json_name
+    
+    @property
+    def cache_dir(self) -> Path:
+        """ Полный путь к директории кэша """
+        return self.project_root / self.cache_directory
 
 
 class ConfigLoader:
@@ -79,6 +88,7 @@ class ConfigLoader:
         durations_config = data.get('durations', {})
         juthesis_config = data.get('juthesis', {})
         output_config = data.get('output', {})
+        cache_config = data.get('cache', {})
 
         return PluginConfig(
             project_root=project_root,
@@ -102,7 +112,10 @@ class ConfigLoader:
             max_initial_coverage_size=juthesis_config.get('max_initial_coverage_size', 2),
 
             output_dir=Path(output_config.get('directory', '.')),
-            input_json_name=output_config.get('input_file', 'juthesis_input.json')
+            input_json_name=output_config.get('input_file', 'juthesis_input.json'),
+            
+            cache_enabled=cache_config.get('enabled', True),
+            cache_directory=Path(cache_config.get('directory', '.juthesis_cache'))
         )
 
     @staticmethod
@@ -137,6 +150,10 @@ class ConfigLoader:
             'output': {
                 'directory': '.',
                 'input_file': 'juthesis_input.json'
+            },
+            'cache': {
+                'enabled': True,
+                'directory': '.juthesis_cache'
             }
         }
 

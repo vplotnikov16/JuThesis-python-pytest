@@ -15,6 +15,9 @@ juthesis_input.json
 juthesis_output.json
 .test_durations.json
 
+# JuThesis cache
+.juthesis_cache/
+
 # Sample project
 /sample_project/.coverage
 /sample_project/.test_durations.json
