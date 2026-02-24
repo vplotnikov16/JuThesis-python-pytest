@@ -1,0 +1,29 @@
+project:
+  root: .
+  sample_project: sample_project
+  source_patterns:
+    - src/**/*.py
+  test_patterns:
+    - tests/**/*.py
+  exclude_patterns:
+    - '**/test_*.py'
+    - '**/__pycache__/**'
+    - '**/migrations/**'
+
+git:
+  base_ref: HEAD~1
+  target_ref: HEAD
+
+coverage:
+  file: .coverage
+
+durations:
+  file: .test_durations.json
+
+juthesis:
+  time_budget: 300.0
+  max_initial_coverage_size: 2
+
+output:
+  directory: .
+  input_file: juthesis_input.json
