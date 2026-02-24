@@ -34,4 +34,5 @@ class ClassC:
         return func_c_1(lst)
 
     def method_c_2(self, x: int, y: int) -> int:
+        # тестовое изменение ее
         return x + y

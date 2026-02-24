@@ -1,5 +1,8 @@
 import time
-from src.module_c import func_c_1, func_c_2, func_c_3, func_c_4, func_c_5, func_c_6
+from src.module_c import (
+    func_c_1, func_c_2, func_c_3, func_c_4, func_c_5, func_c_6,
+    ClassC
+)
 
 
 def test_func_c_1_sum():
@@ -91,3 +94,29 @@ def test_statistics_pipeline():
     assert sorted_data == [3, 8, 11, 15, 19, 22]
 
     assert func_c_6(sorted_data, 11) is True
+
+
+def test_class_c_method_c_1():
+    time.sleep(0.09)
+    obj = ClassC()
+    assert obj.method_c_1(5) == 30
+    assert obj.method_c_1(0) == 0
+    assert obj.method_c_1(1) == 0
+
+
+def test_class_c_method_c_2():
+    time.sleep(0.06)
+    obj = ClassC()
+    assert obj.method_c_2(5, 3) == 8
+    assert obj.method_c_2(10, 20) == 30
+    assert obj.method_c_2(0, 0) == 0
+    assert obj.method_c_2(-5, 10) == 5
+
+
+def test_class_c_combined():
+    time.sleep(0.12)
+    obj = ClassC()
+    result1 = obj.method_c_1(4)
+    result2 = obj.method_c_2(result1, 6)
+    assert result1 == 14
+    assert result2 == 20

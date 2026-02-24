@@ -3,29 +3,55 @@ from pathlib import Path
 
 
 class PytestRunner:
-    """ Запускает pytest программно для автоматического сбора данных """
 
     def __init__(self, project_root: Path, source_patterns: list[str]):
         self.project_root = project_root
         self.source_patterns = source_patterns
 
-    def run_with_coverage_and_durations(self) -> bool:
-        """
-        Запускает pytest с coverage и сбором времени выполнения.
+    def _extract_base_dirs(self) -> list[str]:
+        # Izvlekaem bazovye direktorii iz patternov
+        # src/**/*.py -> src
+        # tests/**/*.py -> tests
+        base_dirs = set()
+        for pattern in self.source_patterns:
+            # Beryom pervuyu chast' do /**
+            if '/**' in pattern:
+                base_dir = pattern.split('/**')[0]
+            elif '**' in pattern:
+                base_dir = pattern.split('**')[0].rstrip('/')
+            else:
+                # Prosto direktoriya
+                base_dir = pattern
+            
+            if base_dir:
+                base_dirs.add(base_dir)
+        
+        return list(base_dirs)
 
-        :return: True если запуск успешен (даже если тесты упали)
-        """
-        # Формируем команду для pytest
-        cmd = [
-            "pytest",
-            f"--cov={','.join(self.source_patterns)}",
+    def run_with_coverage_and_durations(self) -> bool:
+        # Zapusk pytest s coverage i sborom vremeni vypolneniya
+        
+        # Izvlekaem bazovye direktorii dlya coverage
+        base_dirs = self._extract_base_dirs()
+        if not base_dirs:
+            print("Warning: No base directories found in source patterns")
+            return False
+        
+        # Formiruem komandu dlya pytest
+        cmd = ["pytest"]
+        
+        # Dobavlyaem coverage dlya kazhdoy bazovoy direktorii
+        for base_dir in base_dirs:
+            cmd.append(f"--cov={base_dir}")
+        
+        cmd.extend([
             "--cov-context=test",
-            "--cov-report=",  # Отключаем генерацию отчета
-        ]
+            "--cov-report=",  # Otklyuchaem generatsiyu otcheta
+        ])
 
         print(f"Running: {' '.join(cmd)}")
 
-        # Запуск pytest в директории проекта
+        # Zapusk pytest v direktorii proekta
         result = subprocess.run(
             cmd,
             cwd=self.project_root,
@@ -33,9 +59,9 @@ class PytestRunner:
             text=True
         )
 
-        # Проверяем результат
-        # Код 0 = все тесты прошли, код 1 = есть упавшие тесты
-        # Оба случая считаем успешными для наших целей
+        # Proveryaem rezul'tat
+        # Kod 0 = vse testy proshli, kod 1 = est' upavshie testy
+        # Oba sluchaya schitaem uspeshnymi dlya nashih tseley
         if result.returncode in (0, 1):
             print("Pytest completed successfully")
             return True

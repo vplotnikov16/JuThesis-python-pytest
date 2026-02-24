@@ -206,6 +206,13 @@ class PipelineOrchestrator:
             )
             
             print(f"Found {len(modified_functions)} modified functions")
+            
+            # Детальный вывод измененных функций для отладки
+            if modified_functions:
+                print("Modified function identifiers:")
+                for func_id in sorted(modified_functions):
+                    print(f"  {func_id}")
+            
             return modified_functions
             
         except RuntimeError as e:
@@ -313,6 +320,24 @@ class PipelineOrchestrator:
             print("Warning: No test duration data available")
             return None
         
+        # Диагностика: какие функции покрывают тесты
+        print("\nDiagnostic: Coverage analysis")
+        all_covered_functions = set()
+        for test_id, covered_funcs in self._test_coverage.items():
+            all_covered_functions.update(covered_funcs)
+        
+        print(f"Total unique covered functions: {len(all_covered_functions)}")
+        
+        # Проверяем пересечение между modified и covered
+        intersection = self._modified_functions & all_covered_functions
+        print(f"Modified functions covered by tests: {len(intersection)}")
+        
+        if not intersection:
+            print("\nNo tests cover modified functions!")
+            print("\nModified functions:")
+            for func_id in sorted(self._modified_functions):
+                print(f"  {func_id}")
+        
         try:
             builder = ProtocolBuilder(
                 modified_functions=self._modified_functions,
@@ -325,7 +350,7 @@ class PipelineOrchestrator:
             protocol_input = builder.build()
             
             # Вывод статистики
-            print(f"Protocol input created:")
+            print(f"\nProtocol input created:")
             print(f"  Modified functions: {len(protocol_input.modified_functions)}")
             print(f"  Available tests: {len(protocol_input.available_tests)}")
             print(f"  Time budget: {protocol_input.time_budget}s")
