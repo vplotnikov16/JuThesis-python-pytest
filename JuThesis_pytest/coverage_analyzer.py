@@ -55,40 +55,47 @@ class CoverageAnalyzer:
     def analyze(self) -> Dict[str, Set[str]]:
         """
         Проанализировать покрытие
+        Возвращает mapping: test_id -> множество функций
         """
-        # Анализ покрытия: возвращает mapping test_id -> covered_functions
         test_to_functions: Dict[str, Set[str]] = {}
 
         for filename in self.coverage_data.measured_files():
             file_path = Path(filename).resolve()
 
+            # Пропускаем не-Python файлы
             if not file_path.suffix == '.py':
                 continue
 
+            # Получаем функции из индекса
             functions = self.function_index.get(file_path)
             if not functions:
                 continue
 
+            # Получаем контексты для каждой строки файла
             contexts_by_line = self.coverage_data.contexts_by_lineno(filename)
             if not contexts_by_line:
                 continue
 
+            # Обрабатываем каждую строку с покрытием
             for line, contexts in contexts_by_line.items():
+                # Находим функцию, содержащую эту строку
                 func = self.function_scanner.find_function_at_line(functions, line)
                 if not func:
                     continue
 
+                # Обрабатываем контексты (тесты), покрывшие эту строку
                 for context in contexts:
-                    # Парсинг контекста "test_id|phase"
+                    # Парсинг контекста формата "test_id|phase"
                     test_id, _, phase = context.partition("|")
 
-                    # Игнорируем setup/teardown фазы, оставляем только run
+                    # Игнорируем setup/teardown фазы, работаем только с run
                     if phase not in ("", "run"):
                         continue
 
                     if not test_id:
                         continue
 
+                    # Добавляем функцию к покрытию теста
                     test_to_functions.setdefault(test_id, set()).add(
                         func.identifier
                     )
@@ -96,7 +103,7 @@ class CoverageAnalyzer:
         return test_to_functions
 
     def get_all_functions(self) -> Set[str]:
-        """ Геттер множества всех функций """
+        """ Геттер множества всех функций в проекте """
         all_functions = set()
         for functions in self.function_index.values():
             for func in functions:
@@ -107,7 +114,7 @@ class CoverageAnalyzer:
     def get_covered_functions(
             test_coverage: Dict[str, Set[str]]
     ) -> Set[str]:
-        """ Геттер множества покрытых функций """
+        """ Геттер множества функций, покрытых хотя бы одним тестом """
         covered = set()
         for functions in test_coverage.values():
             covered.update(functions)
@@ -117,15 +124,20 @@ class CoverageAnalyzer:
             self,
             test_coverage: Dict[str, Set[str]]
     ) -> Set[str]:
-        """ Геттер множества непокрытых функций """
+        """ Геттер множества функций без покрытия """
         all_funcs = self.get_all_functions()
         covered = self.get_covered_functions(test_coverage)
         return all_funcs - covered
 
     def get_coverage_statistics(self, test_coverage: Dict[str, Set[str]]) -> Dict:
-        """ Статистика покрытия для отладки """
+        """ Статистика покрытия для отладки и анализа """
         all_functions = self.get_all_functions()
         covered_functions = self.get_covered_functions(test_coverage)
+
+        # Подсчет количества функций на тест
+        functions_per_test = [
+            len(funcs) for funcs in test_coverage.values()
+        ] if test_coverage else [0]
 
         return {
             'total_tests': len(test_coverage),
@@ -133,4 +145,5 @@ class CoverageAnalyzer:
             'covered_functions': len(covered_functions),
             'uncovered_functions': len(all_functions - covered_functions),
             'coverage_percentage': len(covered_functions) / len(all_functions) * 100 if all_functions else 0,
+            'avg_functions_per_test': sum(functions_per_test) / len(functions_per_test) if functions_per_test else 0,
         }

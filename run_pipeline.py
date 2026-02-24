@@ -3,6 +3,7 @@ from pathlib import Path
 from JuThesis_pytest import __version__
 from JuThesis_pytest.scanner import FunctionScanner, FunctionInfo
 from JuThesis_pytest.git_analyzer import GitAnalyzer
+from JuThesis_pytest.coverage_analyzer import CoverageAnalyzer
 
 
 def get_project_root() -> Path:
@@ -35,6 +36,29 @@ def analyze_changes(scanner: FunctionScanner) -> set[str]:
         return set()
 
 
+def analyze_coverage(scanner: FunctionScanner) -> dict[str, set[str]]:
+    print("Analyzing coverage...")
+
+    sample_root = get_project_root() / "sample_project"
+    coverage_file = sample_root / ".coverage"
+
+    # Проверка наличия .coverage файла
+    if not coverage_file.exists():
+        print(f"Warning: Coverage file not found at {coverage_file}")
+        print("Run: cd sample_project && pytest --cov=src --cov-context=test")
+        return {}
+
+    try:
+        # Создаем анализатор покрытия
+        analyzer = CoverageAnalyzer(coverage_file=coverage_file, function_scanner=scanner)
+        test_coverage = analyzer.analyze()
+        return test_coverage
+
+    except (FileNotFoundError, ValueError) as e:
+        print(f"Error: {e}")
+        return {}
+
+
 def main():
     print(f"JuThesis Python-Pytest Plugin v{__version__}")
 
@@ -53,18 +77,20 @@ def main():
     # Анализ изменений
     modified_functions = analyze_changes(scanner)
     print("Modified functions:")
-    print(*map(lambda x: f' - {x}', modified_functions), sep="\n")
+    if modified_functions:
+        print(*map(lambda x: f' - {x}', modified_functions), sep="\n")
+    else:
+        print(" (none)")
 
-    # TODO: сбор покрытия
-    # Для тестирования необходимо запустить:
-    # cd sample_project && pytest --cov=src --cov-context=test
-    # Это создаст .coverage файл с контекстами
+    # Сбор покрытия
+    test_coverage = analyze_coverage(scanner)
+    print(f"Found {len(test_coverage)} tests")
 
     # TODO: сбор времени выполнения
     # TODO: построение протокола
     # TODO: сохранение input.json
 
-    print("Pipeline completed.")
+    print("\nPipeline completed.")
 
 
 if __name__ == "__main__":
