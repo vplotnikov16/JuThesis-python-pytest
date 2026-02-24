@@ -69,7 +69,7 @@ class FunctionScanner:
         for file_path in self.scan_files():
             functions = self.extract_functions(file_path)
             if functions:
-                index[file_path] = functions
+                index[file_path.resolve()] = functions
         return index
 
     @staticmethod

@@ -232,14 +232,13 @@ class PipelineOrchestrator:
         # Сбор информации о покрытии тестов с кешированием
         cache_key = 'test_coverage'
         
-        # Проверяем наличие файла coverage
+        # Проверяем наличие файла coverage (важно делать это до проверки кеша)
         if not self._ensure_coverage_exists():
             print("Failed to generate coverage data")
             return {}
         
-        # Проверяем кеш
-        coverage_patterns = self.config.source_patterns + [str(self.config.coverage_file)]
-        if self._is_cache_valid(cache_key, coverage_patterns):
+        # Проверяем кеш (паттерны для проверки изменений исходников)
+        if self._is_cache_valid(cache_key, self.config.source_patterns):
             cached = self._load_from_cache(cache_key)
             if cached is not None:
                 print("Loading coverage from cache...")
@@ -252,7 +251,7 @@ class PipelineOrchestrator:
             print(f"Found {len(test_coverage)} tests with coverage data")
             
             # Сохраняем в кеш
-            self._save_to_cache(cache_key, test_coverage, coverage_patterns)
+            self._save_to_cache(cache_key, test_coverage, self.config.source_patterns)
             
             return test_coverage
             
@@ -264,14 +263,14 @@ class PipelineOrchestrator:
         # Сбор времени выполнения тестов с кешированием
         cache_key = 'test_durations'
         
-        # Проверяем наличие файла durations
+        # Проверяем наличие файла durations (важно делать это до проверки кеша)
         if not self._ensure_durations_exist():
             print("Failed to generate durations data")
             return {}
         
-        # Проверяем кеш
-        duration_patterns = [str(self.config.durations_file)]
-        if self._is_cache_valid(cache_key, duration_patterns):
+        # Проверяем кеш (проверяем изменения в тестовых файлах)
+        test_patterns = [p.replace('src/', 'tests/') for p in self.config.source_patterns]
+        if self._is_cache_valid(cache_key, test_patterns):
             cached = self._load_from_cache(cache_key)
             if cached is not None:
                 print("Loading durations from cache...")
@@ -289,7 +288,7 @@ class PipelineOrchestrator:
                 print(f"Average duration: {stats['average_time']:.3f}s")
             
             # Сохраняем в кеш
-            self._save_to_cache(cache_key, test_durations, duration_patterns)
+            self._save_to_cache(cache_key, test_durations, test_patterns)
             
             return test_durations
             
