@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Dict, Set, List, Optional
+
 from coverage import Coverage
 
 from .scanner import FunctionScanner, FunctionInfo
